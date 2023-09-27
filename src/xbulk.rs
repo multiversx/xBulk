@@ -35,6 +35,12 @@ pub trait XBulk: multiversx_sc_modules::dns::DnsModule {
         let _ = self.owners().insert(new_owner);
     }
 
+    #[only_owner]
+    #[endpoint(removeOwner)]
+    fn remove_owner(&self, old_owner: ManagedAddress) {
+        let _ = self.owners().swap_remove(&old_owner);
+    }
+
     #[payable("*")]
     #[endpoint(bulkSend)]
     fn bulk_send(&self, destinations: MultiValueEncoded<MultiValue2<ManagedAddress, BigUint>>) {
