@@ -29,15 +29,15 @@ pub trait XBulk: multiversx_sc_modules::dns::DnsModule {
     #[storage_mapper("owners")]
     fn owners(&self) -> UnorderedSetMapper<ManagedAddress>;
 
-    #[only_owner]
     #[endpoint(addOwner)]
     fn add_owner(&self, new_owner: ManagedAddress) {
+        self.require_owner();
         let _ = self.owners().insert(new_owner);
     }
 
-    #[only_owner]
     #[endpoint(removeOwner)]
     fn remove_owner(&self, old_owner: ManagedAddress) {
+        self.require_owner();
         let _ = self.owners().swap_remove(&old_owner);
     }
 
