@@ -24,8 +24,8 @@ multiversx_sc_wasm_adapter::endpoints! {
         init => init
         upgrade => upgrade
         changeDeployer => change_deployer
-        addAdmin => add_owner
-        removeAdmin => remove_owner
+        addAdmin => add_admin
+        removeAdmin => remove_admin
         bulkSend => bulk_send
         bulkSendSameAmount => bulk_send_same_amount
         draw => draw
