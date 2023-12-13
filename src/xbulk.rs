@@ -33,13 +33,13 @@ pub trait XBulk: multiversx_sc_modules::dns::DnsModule {
     }
 
     #[endpoint(addAdmin)]
-    fn add_owner(&self, new_admin: ManagedAddress) {
+    fn add_admin(&self, new_admin: ManagedAddress) {
         self.require_deployer();
         let _ = self.admins().insert(new_admin);
     }
 
     #[endpoint(removeAdmin)]
-    fn remove_owner(&self, old_admin: ManagedAddress) {
+    fn remove_admin(&self, old_admin: ManagedAddress) {
         self.require_deployer();
         let _ = self.admins().swap_remove(&old_admin);
     }
