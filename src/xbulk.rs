@@ -13,38 +13,41 @@ pub struct DestAmountPair<M: ManagedTypeApi> {
 #[multiversx_sc::derive::contract]
 pub trait XBulk: multiversx_sc_modules::dns::DnsModule {
     #[init]
-    fn init(&self, new_owner: OptionalValue<ManagedAddress>) {
-        match new_owner {
-            OptionalValue::Some(o) => {
-                let _ = self.owners().insert(o);
-            }
-            OptionalValue::None => {
-                let sc_owner = self.blockchain().get_caller();
-                let _ = self.owners().insert(sc_owner);
-            }
-        }
+    fn init(&self, opt_new_owner: OptionalValue<ManagedAddress>) {
+        let new_owner = match opt_new_owner {
+            OptionalValue::Some(owner) => owner,
+            OptionalValue::None => self.blockchain().get_caller(),
+        };
+
+        self.deployer().set(&new_owner);
+        let _ = self.admins().insert(new_owner);
     }
 
-    #[view(getOwners)]
-    #[storage_mapper("owners")]
-    fn owners(&self) -> UnorderedSetMapper<ManagedAddress>;
+    #[endpoint]
+    fn upgrade(&self) {}
 
     #[only_owner]
-    #[endpoint(addOwner)]
-    fn add_owner(&self, new_owner: ManagedAddress) {
-        let _ = self.owners().insert(new_owner);
+    #[endpoint(changeDeployer)]
+    fn change_deployer(&self, new_deployer: ManagedAddress) {
+        self.deployer().set(new_deployer);
     }
 
-    #[only_owner]
-    #[endpoint(removeOwner)]
-    fn remove_owner(&self, old_owner: ManagedAddress) {
-        let _ = self.owners().swap_remove(&old_owner);
+    #[endpoint(addAdmin)]
+    fn add_owner(&self, new_admin: ManagedAddress) {
+        self.require_deployer();
+        let _ = self.admins().insert(new_admin);
+    }
+
+    #[endpoint(removeAdmin)]
+    fn remove_owner(&self, old_admin: ManagedAddress) {
+        self.require_deployer();
+        let _ = self.admins().swap_remove(&old_admin);
     }
 
     #[payable("*")]
     #[endpoint(bulkSend)]
     fn bulk_send(&self, destinations: MultiValueEncoded<MultiValue2<ManagedAddress, BigUint>>) {
-        self.require_owner();
+        self.require_admin();
 
         let payment = self.call_value().egld_or_single_esdt();
 
@@ -78,7 +81,7 @@ pub trait XBulk: multiversx_sc_modules::dns::DnsModule {
     #[payable("*")]
     #[endpoint(bulkSendSameAmount)]
     fn bulk_send_same_amount(&self, destinations: MultiValueEncoded<ManagedAddress>) {
-        self.require_owner();
+        self.require_admin();
 
         let payment = self.call_value().egld_or_single_esdt();
         let amount_to_send = payment.amount / (destinations.len() as u64);
@@ -99,7 +102,7 @@ pub trait XBulk: multiversx_sc_modules::dns::DnsModule {
         &self,
         participants: MultiValueEncoded<ManagedAddress>,
     ) -> MultiValueEncoded<ManagedAddress> {
-        self.require_owner();
+        self.require_admin();
 
         let payments = self.call_value().all_esdt_transfers();
 
@@ -135,7 +138,7 @@ pub trait XBulk: multiversx_sc_modules::dns::DnsModule {
     #[payable("*")]
     #[endpoint(nftDistribution)]
     fn nft_distribution(&self, destinations: MultiValueEncoded<ManagedAddress>) {
-        self.require_owner();
+        self.require_admin();
 
         let payments = self.call_value().all_esdt_transfers();
         require!(
@@ -154,11 +157,27 @@ pub trait XBulk: multiversx_sc_modules::dns::DnsModule {
         }
     }
 
-    fn require_owner(&self) {
+    fn require_deployer(&self) {
         let caller = self.blockchain().get_caller();
         require!(
-            self.owners().contains(&caller),
+            self.deployer().get() == caller,
+            "Only the deployer can call this method on this contract"
+        );
+    }
+
+    fn require_admin(&self) {
+        let caller = self.blockchain().get_caller();
+        require!(
+            self.admins().contains(&caller),
             "You are not allowed to call this method on this contract"
         );
     }
+
+    #[view(getDeployer)]
+    #[storage_mapper("deployer")]
+    fn deployer(&self) -> SingleValueMapper<ManagedAddress>;
+
+    #[view(getAdmins)]
+    #[storage_mapper("admins")]
+    fn admins(&self) -> UnorderedSetMapper<ManagedAddress>;
 }
